@@ -13,6 +13,10 @@ import { User } from '@server/entity/User';
 import { getSettings } from '@server/lib/settings';
 import { checkUser } from '@server/middleware/auth';
 import { setupTestDb } from '@server/test/db';
+import {
+  assertNoCredentials,
+  seedUserSettings,
+} from '@server/test/userSettings';
 import type { Express } from 'express';
 import express from 'express';
 import session from 'express-session';
@@ -210,6 +214,27 @@ describe('PUT /request/:requestId (movie)', () => {
     assert.strictEqual(saved.serverId, 3);
     assert.strictEqual(saved.profileId, 7);
     assert.strictEqual(saved.rootFolder, '/updated/movies');
+  });
+});
+
+describe('GET /request/:requestId', () => {
+  it('omits notification settings from requestedBy and modifiedBy', async () => {
+    const pending = await seedRequest();
+    await seedUserSettings('demo@seerr.dev');
+    await seedUserSettings('admin@seerr.dev');
+
+    const admin = await loginAs('admin@seerr.dev', 'test1234');
+    const approved = await admin.post(`/request/${pending.id}/approve`);
+    assert.strictEqual(approved.status, 200);
+
+    const res = await admin.get(`/request/${pending.id}`);
+
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(res.body.requestedBy.email, 'demo@seerr.dev');
+    assert.strictEqual(res.body.modifiedBy.email, 'admin@seerr.dev');
+    assert.ok(!('settings' in res.body.requestedBy));
+    assert.ok(!('settings' in res.body.modifiedBy));
+    assertNoCredentials(res.body);
   });
 });
 
