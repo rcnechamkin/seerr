@@ -220,7 +220,7 @@ describe('PUT /request/:requestId (movie)', () => {
 describe('GET /request/:requestId', () => {
   it('omits notification settings from requestedBy and modifiedBy', async () => {
     const pending = await seedRequest();
-    await seedUserSettings('demo@seerr.dev');
+    await seedUserSettings('friend@seerr.dev');
     await seedUserSettings('admin@seerr.dev');
 
     const admin = await loginAs('admin@seerr.dev', 'test1234');
@@ -230,7 +230,7 @@ describe('GET /request/:requestId', () => {
     const res = await admin.get(`/request/${pending.id}`);
 
     assert.strictEqual(res.status, 200);
-    assert.strictEqual(res.body.requestedBy.email, 'demo@seerr.dev');
+    assert.strictEqual(res.body.requestedBy.email, 'friend@seerr.dev');
     assert.strictEqual(res.body.modifiedBy.email, 'admin@seerr.dev');
     assert.ok(!('settings' in res.body.requestedBy));
     assert.ok(!('settings' in res.body.modifiedBy));

@@ -74,7 +74,7 @@ async function loginAs(email: string, password: string) {
 describe('GET /blocklist/:id', () => {
   // this route replies with res.send() rather than res.json()
   it('omits notification settings from the blocklisting user', async () => {
-    const blocklistUser = await seedUserSettings('demo@seerr.dev');
+    const blocklistUser = await seedUserSettings('friend@seerr.dev');
 
     const media = await getRepository(Media).save(
       new Media({
@@ -99,7 +99,7 @@ describe('GET /blocklist/:id', () => {
     const res = await admin.get('/blocklist/12345?mediaType=movie');
 
     assert.strictEqual(res.status, 200);
-    assert.strictEqual(res.body.user.email, 'demo@seerr.dev');
+    assert.strictEqual(res.body.user.email, 'friend@seerr.dev');
     assert.ok(!('settings' in res.body.user));
     assertNoCredentials(res.body);
   });

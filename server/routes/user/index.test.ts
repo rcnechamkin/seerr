@@ -74,7 +74,7 @@ async function loginAs(email: string, password: string) {
 
 describe('GET /user/:id/watchlist', () => {
   it('omits notification settings from every requestedBy in the page', async () => {
-    const owner = await seedUserSettings('demo@seerr.dev');
+    const owner = await seedUserSettings('friend@seerr.dev');
 
     const media = await getRepository(Media).save(
       new Media({
@@ -108,9 +108,9 @@ describe('GET /user/:id/watchlist', () => {
 
 describe('GET /user/:id', () => {
   it('still returns full settings to the user themselves', async () => {
-    const owner = await seedUserSettings('demo@seerr.dev');
+    const owner = await seedUserSettings('friend@seerr.dev');
 
-    const agent = await loginAs('demo@seerr.dev', 'test1234');
+    const agent = await loginAs('friend@seerr.dev', 'test1234');
     const res = await agent.get(`/user/${owner.id}`);
 
     assert.strictEqual(res.status, 200);
@@ -122,7 +122,7 @@ describe('GET /user/:id', () => {
   });
 
   it('still returns full settings to a manage-users admin', async () => {
-    const owner = await seedUserSettings('demo@seerr.dev');
+    const owner = await seedUserSettings('friend@seerr.dev');
 
     const admin = await loginAs('admin@seerr.dev', 'test1234');
     const res = await admin.get(`/user/${owner.id}`);
@@ -137,7 +137,7 @@ describe('GET /user/:id', () => {
     });
     await seedUserSettings('admin@seerr.dev');
 
-    const agent = await loginAs('demo@seerr.dev', 'test1234');
+    const agent = await loginAs('friend@seerr.dev', 'test1234');
     const res = await agent.get(`/user/${admin.id}`);
 
     assert.strictEqual(res.status, 200);

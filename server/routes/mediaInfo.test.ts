@@ -140,7 +140,7 @@ async function loginAs(email: string, password: string) {
 async function setViewerPermissions(permissions: number) {
   const userRepository = getRepository(User);
   const viewer = await userRepository.findOneOrFail({
-    where: { email: 'demo@seerr.dev' },
+    where: { email: 'friend@seerr.dev' },
   });
   viewer.permissions = permissions;
   await userRepository.save(viewer);
@@ -202,7 +202,7 @@ for (const { path, tmdbId, mediaType } of routes) {
       await seedMedia(mediaType, tmdbId);
       await setViewerPermissions(Permission.REQUEST);
 
-      const agent = await loginAs('demo@seerr.dev', 'test1234');
+      const agent = await loginAs('friend@seerr.dev', 'test1234');
       const res = await agent.get(`${path}/${tmdbId}`);
 
       assert.strictEqual(res.status, 200);
@@ -220,7 +220,7 @@ for (const { path, tmdbId, mediaType } of routes) {
       await seedMedia(mediaType, tmdbId);
       await setViewerPermissions(Permission.REQUEST);
 
-      const agent = await loginAs('demo@seerr.dev', 'test1234');
+      const agent = await loginAs('friend@seerr.dev', 'test1234');
       const res = await agent.get(`${path}/${tmdbId}`);
 
       const { requestedBy } = res.body.mediaInfo.requests[0];
@@ -233,7 +233,7 @@ for (const { path, tmdbId, mediaType } of routes) {
       await seedMedia(mediaType, tmdbId);
       await setViewerPermissions(Permission.REQUEST);
 
-      const agent = await loginAs('demo@seerr.dev', 'test1234');
+      const agent = await loginAs('friend@seerr.dev', 'test1234');
       const res = await agent.get(`${path}/${tmdbId}`);
 
       assert.deepStrictEqual(res.body.mediaInfo.issues, []);
@@ -249,7 +249,7 @@ for (const { path, tmdbId, mediaType } of routes) {
         await seedMedia(mediaType, tmdbId);
         await setViewerPermissions(Permission.REQUEST | permission);
 
-        const agent = await loginAs('demo@seerr.dev', 'test1234');
+        const agent = await loginAs('friend@seerr.dev', 'test1234');
         const res = await agent.get(`${path}/${tmdbId}`);
 
         assert.strictEqual(res.body.mediaInfo.issues.length, 1);

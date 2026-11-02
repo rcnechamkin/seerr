@@ -218,9 +218,9 @@ describe('GET /issueComment/:commentId', () => {
     const userRepo = getRepository(User);
     const media = await seedMedia();
     const friend = await userRepo.findOneOrFail({
-      where: { email: 'demo@seerr.dev' },
+      where: { email: 'friend@seerr.dev' },
     });
-    await seedUserSettings('demo@seerr.dev');
+    await seedUserSettings('friend@seerr.dev');
 
     const agent = await loginAs('admin@seerr.dev', 'test1234');
     const created = await agent.post('/issue').send({
@@ -234,7 +234,7 @@ describe('GET /issueComment/:commentId', () => {
     const res = await agent.get(`/issueComment/${created.body.comments[0].id}`);
 
     assert.strictEqual(res.status, 200);
-    assert.strictEqual(res.body.user.email, 'demo@seerr.dev');
+    assert.strictEqual(res.body.user.email, 'friend@seerr.dev');
     assert.ok(!('settings' in res.body.user));
     assertNoCredentials(res.body);
   });
