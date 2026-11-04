@@ -15,6 +15,9 @@ import { timingSafeEqual } from 'node:crypto';
  *     delete anyone's pending request);
  *   - without X-API-User: only the user directory (GET /user, to map members) and POST /user/import-from-jellyfin.
  * Anything else is refused with 403 before any route runs. The main API key is unchanged.
+ * One exception (owner, 2026-11-04): ON_BEHALF_OWNER_USER_ID names ONE user (normally 1, the owner's own account)
+ * the key may act as on the member routes even though that user is an administrator. Only that id, only those
+ * routes, a delete still only of that user's own request; every other administrator stays refused. Unset: none.
  */
 export const ON_BEHALF_MEMBER_ROUTES: [string, RegExp][] = [
   ['GET', /^\/search$/],
@@ -40,6 +43,14 @@ export function onBehalfKey(): string | undefined {
   return key && key.length >= 32 ? key : undefined;
 }
 
+/** The one administrator the on-behalf key may act as on member routes, or undefined (unset or malformed). */
+export function onBehalfOwnerId(): number | undefined {
+  const raw = process.env.ON_BEHALF_OWNER_USER_ID;
+  return raw && /^\d{1,9}$/.test(raw) && Number(raw) >= 1
+    ? Number(raw)
+    : undefined;
+}
+
 function sameKey(presented: string | undefined, key: string): boolean {
   if (!presented) return false;
   const a = Buffer.from(presented);
@@ -60,12 +71,15 @@ async function onBehalfUser(req: Request): Promise<User | null> {
     if (!allowed(ON_BEHALF_DIRECTORY_ROUTES, req.method, path)) return null;
     return userRepository.findOne({ where: { id: 1 } });
   }
-  if (!/^\d{1,9}$/.test(asHeader) || Number(asHeader) <= 1) return null;
+  if (!/^\d{1,9}$/.test(asHeader)) return null;
+  const asId = Number(asHeader);
+  const owner = asId === onBehalfOwnerId();
+  if (asId <= 1 && !owner) return null;
   if (!allowed(ON_BEHALF_MEMBER_ROUTES, req.method, path)) return null;
-  const member = await userRepository.findOne({
-    where: { id: Number(asHeader) },
-  });
-  if (!member || (member.permissions & PRIVILEGED) !== 0) return null;
+  const member = await userRepository.findOne({ where: { id: asId } });
+  if (!member || (!owner && (member.permissions & PRIVILEGED) !== 0)) {
+    return null;
+  }
   if (req.method === 'DELETE') {
     const request = await getRepository(MediaRequest).findOne({
       where: { id: Number(path.split('/')[2]) },
