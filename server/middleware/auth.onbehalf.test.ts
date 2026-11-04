@@ -26,6 +26,8 @@ function createApp() {
   const echo = (req: express.Request, res: express.Response) =>
     res.json({ user: req.user?.id ?? null });
   api.get('/search', echo);
+  api.get('/discover/trending', echo);
+  api.get('/discover/movies', echo);
   api.get('/user', echo);
   api.get('/settings/main', echo);
   api.post('/request/:id/approve', echo);
@@ -64,6 +66,32 @@ describe('on-behalf key (Avrana fork)', () => {
       .set('X-API-User', String(friend));
     assert.strictEqual(res.status, 200);
     assert.strictEqual(res.body.user, friend);
+  });
+
+  it('reads trending as a member, nothing else in discover', async () => {
+    const { admin, friend } = await ids();
+    const trending = await request(app)
+      .get('/api/v1/discover/trending')
+      .set('X-API-Key', KEY)
+      .set('X-API-User', String(friend));
+    assert.strictEqual(trending.status, 200);
+    assert.strictEqual(trending.body.user, friend);
+    for (const as of ['1', String(admin)]) {
+      const res = await request(app)
+        .get('/api/v1/discover/trending')
+        .set('X-API-Key', KEY)
+        .set('X-API-User', as);
+      assert.strictEqual(res.status, 403, as);
+    }
+    const anonymous = await request(app)
+      .get('/api/v1/discover/trending')
+      .set('X-API-Key', KEY);
+    assert.strictEqual(anonymous.status, 403);
+    const movies = await request(app)
+      .get('/api/v1/discover/movies')
+      .set('X-API-Key', KEY)
+      .set('X-API-User', String(friend));
+    assert.strictEqual(movies.status, 403);
   });
 
   it('never acts as user 1 or an administrator', async () => {
