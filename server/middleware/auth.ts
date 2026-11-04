@@ -18,6 +18,7 @@ import { timingSafeEqual } from 'node:crypto';
  */
 export const ON_BEHALF_MEMBER_ROUTES: [string, RegExp][] = [
   ['GET', /^\/search$/],
+  ['GET', /^\/discover\/trending$/],
   ['GET', /^\/movie\/\d+$/],
   ['GET', /^\/tv\/\d+$/],
   ['GET', /^\/request$/],
