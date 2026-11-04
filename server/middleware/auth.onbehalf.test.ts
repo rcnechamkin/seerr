@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { after, before, describe, it } from 'node:test';
+import { after, afterEach, before, describe, it } from 'node:test';
 
 import {
   MediaRequestStatus,
@@ -10,6 +10,7 @@ import { getRepository } from '@server/datasource';
 import Media from '@server/entity/Media';
 import { MediaRequest } from '@server/entity/MediaRequest';
 import { User } from '@server/entity/User';
+import { Permission } from '@server/lib/permissions';
 import { checkUser } from '@server/middleware/auth';
 import { setupTestDb } from '@server/test/db';
 import type { Express } from 'express';
@@ -155,6 +156,91 @@ describe('on-behalf key (Avrana fork)', () => {
       .set('X-API-Key', KEY)
       .set('X-API-User', String(friend));
     assert.strictEqual(res.status, 403);
+  });
+
+  describe('with ON_BEHALF_OWNER_USER_ID', () => {
+    async function asOwner() {
+      const found = await ids();
+      process.env.ON_BEHALF_OWNER_USER_ID = String(found.admin);
+      return found;
+    }
+    afterEach(() => {
+      delete process.env.ON_BEHALF_OWNER_USER_ID;
+    });
+
+    it('acts as that one administrator on member routes', async () => {
+      const { admin } = await asOwner();
+      for (const path of ['/api/v1/search', '/api/v1/discover/trending']) {
+        const res = await request(app)
+          .get(path)
+          .set('X-API-Key', KEY)
+          .set('X-API-User', String(admin));
+        assert.strictEqual(res.status, 200, path);
+        assert.strictEqual(res.body.user, admin);
+      }
+    });
+
+    it('keeps the owner off every other route', async () => {
+      const { admin } = await asOwner();
+      for (const [method, path] of [
+        ['get', '/api/v1/settings/main'],
+        ['post', '/api/v1/request/1/approve'],
+        ['get', '/api/v1/discover/movies'],
+      ] as const) {
+        const res = await request(app)
+          [method](path)
+          .set('X-API-Key', KEY)
+          .set('X-API-User', String(admin));
+        assert.strictEqual(res.status, 403, path);
+      }
+    });
+
+    it('still refuses every other administrator', async () => {
+      const { admin, friend } = await asOwner();
+      const users = getRepository(User);
+      const other = await users.findOneOrFail({ where: { id: friend } });
+      const saved = other.permissions;
+      other.permissions = Permission.ADMIN;
+      await users.save(other);
+      try {
+        const res = await request(app)
+          .get('/api/v1/search')
+          .set('X-API-Key', KEY)
+          .set('X-API-User', String(friend));
+        assert.strictEqual(res.status, 403);
+      } finally {
+        other.permissions = saved;
+        await users.save(other);
+      }
+      assert.notStrictEqual(admin, friend);
+    });
+
+    it("deletes only the owner's own request", async () => {
+      const { admin, friend } = await asOwner();
+      const media = await getRepository(Media).save(
+        new Media({
+          mediaType: MediaType.MOVIE,
+          tmdbId: 778,
+          status: MediaStatus.UNKNOWN,
+          status4k: MediaStatus.UNKNOWN,
+        })
+      );
+      const users = getRepository(User);
+      const theirs = await getRepository(MediaRequest).save(
+        new MediaRequest({
+          type: MediaType.MOVIE,
+          status: MediaRequestStatus.PENDING,
+          media,
+          is4k: false,
+          requestedBy: await users.findOneOrFail({ where: { id: friend } }),
+        })
+      );
+      const res = await request(app)
+        .delete(`/api/v1/request/${theirs.id}`)
+        .set('X-API-Key', KEY)
+        .set('X-API-User', String(admin));
+      assert.strictEqual(res.status, 403);
+    });
   });
 
   it('leaves a wrong key to the normal rules', async () => {
