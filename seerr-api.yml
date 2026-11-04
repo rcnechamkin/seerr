@@ -5666,6 +5666,20 @@ paths:
             enum: [exact, range]
             example: exact
           description: Determines whether to use exact certification matching or a certification range (internal use only, not sent to TMDB API)
+        - in: query
+          name: releaseType
+          schema:
+            type: string
+            pattern: '^[1-6](\|[1-6]){0,5}$'
+            example: 4|5
+          description: Avrana fork. TMDB release types (pipe-separated; 4 digital, 5 physical) in releaseRegion, released by today
+        - in: query
+          name: releaseRegion
+          schema:
+            type: string
+            pattern: '^[A-Z]{2}$'
+            example: US
+          description: Avrana fork. Region for releaseType (default US)
       responses:
         '200':
           description: Results
