@@ -87,6 +87,15 @@ const QueryFilterOptions = z.object({
   certificationLte: z.coerce.string().optional(),
   certificationCountry: z.coerce.string().optional(),
   certificationMode: z.enum(['exact', 'range']).optional(),
+  // Avrana fork: TMDB release types (1-6, pipe-separated; 4 = digital, 5 = physical) in one region, released by today.
+  releaseType: z
+    .string()
+    .regex(/^[1-6](\|[1-6]){0,5}$/)
+    .optional(),
+  releaseRegion: z
+    .string()
+    .regex(/^[A-Z]{2}$/)
+    .optional(),
 });
 
 export type FilterOptions = z.infer<typeof QueryFilterOptions>;
@@ -128,6 +137,8 @@ discoverRoutes.get('/movies', async (req, res, next) => {
       certification: query.certification,
       certificationGte: query.certificationGte,
       certificationLte: query.certificationLte,
+      releaseType: query.releaseType,
+      releaseRegion: query.releaseRegion,
       certificationCountry: query.certificationCountry,
     });
 

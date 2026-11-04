@@ -29,6 +29,8 @@ function createApp() {
   api.get('/search', echo);
   api.get('/discover/trending', echo);
   api.get('/discover/movies', echo);
+  api.get('/discover/tv', echo);
+  api.get('/discover/movies/upcoming', echo);
   api.get('/user', echo);
   api.get('/settings/main', echo);
   api.post('/request/:id/approve', echo);
@@ -69,7 +71,7 @@ describe('on-behalf key (Avrana fork)', () => {
     assert.strictEqual(res.body.user, friend);
   });
 
-  it('reads trending as a member, nothing else in discover', async () => {
+  it('reads trending, films and TV discovery as a member, nothing else in discover', async () => {
     const { admin, friend } = await ids();
     const trending = await request(app)
       .get('/api/v1/discover/trending')
@@ -88,11 +90,27 @@ describe('on-behalf key (Avrana fork)', () => {
       .get('/api/v1/discover/trending')
       .set('X-API-Key', KEY);
     assert.strictEqual(anonymous.status, 403);
-    const movies = await request(app)
-      .get('/api/v1/discover/movies')
+    for (const path of ['/api/v1/discover/movies', '/api/v1/discover/tv']) {
+      const res = await request(app)
+        .get(path)
+        .query({ language: 'en', releaseType: '4|5' })
+        .set('X-API-Key', KEY)
+        .set('X-API-User', String(friend));
+      assert.strictEqual(res.status, 200, path);
+      assert.strictEqual(res.body.user, friend);
+      for (const as of ['1', String(admin)]) {
+        const refused = await request(app)
+          .get(path)
+          .set('X-API-Key', KEY)
+          .set('X-API-User', as);
+        assert.strictEqual(refused.status, 403, `${path} as ${as}`);
+      }
+    }
+    const upcoming = await request(app)
+      .get('/api/v1/discover/movies/upcoming')
       .set('X-API-Key', KEY)
       .set('X-API-User', String(friend));
-    assert.strictEqual(movies.status, 403);
+    assert.strictEqual(upcoming.status, 403);
   });
 
   it('never acts as user 1 or an administrator', async () => {
@@ -185,7 +203,7 @@ describe('on-behalf key (Avrana fork)', () => {
       for (const [method, path] of [
         ['get', '/api/v1/settings/main'],
         ['post', '/api/v1/request/1/approve'],
-        ['get', '/api/v1/discover/movies'],
+        ['get', '/api/v1/discover/movies/upcoming'],
       ] as const) {
         const res = await request(app)
           [method](path)

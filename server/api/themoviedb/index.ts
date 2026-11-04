@@ -95,6 +95,8 @@ interface DiscoverMovieOptions {
   certificationGte?: string;
   certificationLte?: string;
   certificationCountry?: string;
+  releaseType?: string;
+  releaseRegion?: string;
 }
 
 interface DiscoverTvOptions {
@@ -607,6 +609,8 @@ class TheMovieDb extends ExternalAPI implements TvShowProvider {
     certificationGte,
     certificationLte,
     certificationCountry,
+    releaseType,
+    releaseRegion,
   }: DiscoverMovieOptions = {}): Promise<TmdbSearchMovieResponse> => {
     try {
       const defaultFutureDate = new Date(
@@ -626,13 +630,21 @@ class TheMovieDb extends ExternalAPI implements TvShowProvider {
           include_adult: includeAdult,
           include_video: includeVideo,
           language,
-          region: this.discoverRegion || '',
+          region: releaseType
+            ? releaseRegion || 'US'
+            : this.discoverRegion || '',
           with_original_language:
             originalLanguage && originalLanguage !== 'all'
               ? originalLanguage
               : originalLanguage === 'all'
                 ? undefined
                 : this.originalLanguage,
+          // Avrana fork: only titles with a release of this type in the region, dated today or earlier
+          // (e.g. 4|5 = already out digitally or on disc, not still only in cinemas).
+          with_release_type: releaseType,
+          'release_date.lte': releaseType
+            ? new Date().toISOString().split('T')[0]
+            : undefined,
           // Set our release date values, but check if one is set and not the other,
           // so we can force a past date or a future date. TMDB Requires both values if one is set!
           'primary_release_date.gte':
